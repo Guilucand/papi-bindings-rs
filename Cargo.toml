@@ -1,8 +1,12 @@
 [package]
-name = "papi"
-version = "0.3.0"
-authors = ["Eric Holk <eric.holk@gmail.com>"]
+name = "papi-bindings"
+version = "0.4.0"
+authors = ["Eric Holk <eric.holk@gmail.com>", "Andrea Cracco <guilucand@gmail.com>"]
+edition = "2018"
+categories = []
+description = "Rust PAPI bindings"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Guilucand/papi-bindings-rs"
 
 [dependencies]
-libc = "^0.1.8"
-rand = "^0.3.8"
+libc = "0.2.134"
