@@ -1,10 +1,10 @@
 use crate::counter::Counter;
-use std::os::raw::{c_int, c_longlong};
-use std::sync::Arc;
 use crate::PAPI_destroy_eventset;
 use crate::{check_error, PAPI_create_eventset};
 use crate::{PAPI_accum, PAPI_read, PAPI_start, PAPI_stop, PAPI_NULL};
 use crate::{PAPI_add_event, PapiError};
+use std::os::raw::{c_int, c_longlong};
+use std::sync::Arc;
 
 pub struct EventsSet {
     counter_defs: Arc<Vec<Counter>>,

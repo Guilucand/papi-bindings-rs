@@ -1,7 +1,7 @@
 use crate::check_error;
+use crate::{PAPI_event_name_to_code, PapiError};
 use std::ffi::CString;
 use std::os::raw::c_int;
-use crate::{PAPI_event_name_to_code, PapiError};
 
 #[derive(Clone)]
 #[allow(dead_code)]

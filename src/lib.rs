@@ -1,6 +1,5 @@
 //! This package provides bindings to the PAPI performance counters
 //! library.
-#![feature(thread_id_value)]
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
@@ -11,6 +10,7 @@ pub mod counter;
 pub mod events_set;
 
 use std::os::raw::{c_int, c_ulong};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::bindings::*;
 
@@ -38,8 +38,14 @@ pub(crate) fn check_error(code: i32) -> Result<(), PapiError> {
     }
 }
 
+static THREAD_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+thread_local! {
+    static THREAD_INDEX: u64 = THREAD_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
+}
+
 extern "C" fn get_thread_id() -> c_ulong {
-    std::thread::current().id().as_u64().get() as c_ulong
+    THREAD_INDEX.with(|id| *id as c_ulong)
 }
 
 pub fn initialize(multithread: bool) -> Result<(), PapiError> {
