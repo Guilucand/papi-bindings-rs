@@ -5,6 +5,7 @@
 #[allow(non_snake_case)]
 #[allow(dead_code)]
 #[allow(non_upper_case_globals)]
+#[allow(deref_nullptr)]
 mod bindings;
 pub mod counter;
 pub mod events_set;
@@ -78,7 +79,6 @@ pub enum Action {
 mod tests {
     use crate::counter::Counter;
     use crate::events_set::EventsSet;
-    use crate::PAPI_EINVAL;
 
     #[test]
     fn test_fib() {
