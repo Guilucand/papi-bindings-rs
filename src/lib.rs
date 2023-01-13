@@ -10,6 +10,8 @@ mod bindings;
 pub mod counter;
 pub mod events_set;
 
+use std::ffi::CStr;
+use std::fmt::Debug;
 use std::os::raw::{c_int, c_ulong};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -23,12 +25,26 @@ fn papi_version_number(maj: u32, min: u32, rev: u32, inc: u32) -> u32 {
 #[link(name = "papi")]
 extern "C" {}
 
-#[derive(Debug)]
 #[allow(dead_code)]
 pub struct PapiError {
     code: i32,
 }
 
+impl Debug for PapiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        print!("Hi");
+        let err_msg_buf = unsafe { PAPI_strerror(self.code) };
+        print!("Hi ok");
+        let err_msg = unsafe { CStr::from_ptr(err_msg_buf) };
+        print!("Hi ok2");
+        write!(
+            f,
+            "PapiError with error code {}, i.e \"{}\"",
+            self.code,
+            err_msg.to_str().unwrap_or_else(|_| "NULL")
+        )
+    }
+}
 pub(crate) fn check_error(code: i32) -> Result<(), PapiError> {
     if code == (PAPI_OK as i32) {
         Ok(())
@@ -94,10 +110,25 @@ pub enum Action {
 mod tests {
     use crate::counter::Counter;
     use crate::events_set::EventsSet;
+    use crate::initialize;
+    use crate::PapiError;
+
+    #[test]
+    fn test_papi_error() {
+        // https://bitbucket.org/icl/papi/wiki/PAPI-Error-Handling.md
+        // source for expected error messages
+        initialize(true).unwrap();
+        let error = PapiError { code: -7 };
+        let msg = format!("{error:?}");
+        assert_eq!(
+            msg,
+            "PapiError with error code -7, i.e \"Event does not exist\""
+        );
+    }
 
     #[test]
     fn test_fib() {
-        crate::initialize(true).unwrap();
+        initialize(true).unwrap();
 
         let counters = vec![
             Counter::from_name("ix86arch::INSTRUCTION_RETIRED").unwrap(),
