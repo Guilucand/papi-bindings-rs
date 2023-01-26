@@ -32,11 +32,8 @@ pub struct PapiError {
 
 impl Debug for PapiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        print!("Hi");
         let err_msg_buf = unsafe { PAPI_strerror(self.code) };
-        print!("Hi ok");
         let err_msg = unsafe { CStr::from_ptr(err_msg_buf) };
-        print!("Hi ok2");
         write!(
             f,
             "PapiError with error code {}, i.e \"{}\"",
