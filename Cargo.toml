@@ -1,6 +1,6 @@
 [package]
 name = "papi-bindings"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Eric Holk <eric.holk@gmail.com>", "Andrea Cracco <guilucand@gmail.com>"]
 edition = "2018"
 categories = []
@@ -9,4 +9,4 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/Guilucand/papi-bindings-rs"
 
 [dependencies]
-libc = "0.2.139"
+libc = "0.2.142"
