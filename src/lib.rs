@@ -92,6 +92,13 @@ pub fn initialize(multithread: bool) -> Result<(), PapiError> {
     Ok(())
 }
 
+/// ALL EventsSet should be dropped before calling this
+pub fn terminate() {
+    unsafe {
+        PAPI_shutdown();
+    }
+}
+
 pub fn is_initialized() -> bool {
     unsafe { check_error(PAPI_is_initialized()).is_ok() }
 }
@@ -108,6 +115,7 @@ mod tests {
     use crate::counter::Counter;
     use crate::events_set::EventsSet;
     use crate::initialize;
+    use crate::terminate;
     use crate::PapiError;
 
     #[test]
@@ -143,6 +151,9 @@ mod tests {
                 fv, x, counters[0], counters[1]
             );
         }
+        drop(counters);
+        drop(event_set);
+        terminate()
     }
 
     fn fib(n: isize) -> isize {
