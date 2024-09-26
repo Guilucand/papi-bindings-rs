@@ -10,27 +10,38 @@ mod bindings;
 pub mod counter;
 pub mod events_set;
 
+use std::ffi::CStr;
+use std::fmt::Debug;
 use std::os::raw::{c_int, c_ulong};
+use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::bindings::*;
 
-const fn papi_version_number(maj: u32, min: u32, rev: u32, inc: u32) -> u32 {
+fn papi_version_number(maj: u32, min: u32, rev: u32, inc: u32) -> u32 {
     (maj << 24) | (min << 16) | (rev << 8) | inc
 }
-
-const PAPI_VERSION: u32 = papi_version_number(6, 0, 0, 1);
-const PAPI_VER_CURRENT: c_int = (PAPI_VERSION & 0xffff0000) as c_int;
 
 #[link(name = "papi")]
 extern "C" {}
 
-#[derive(Debug)]
 #[allow(dead_code)]
 pub struct PapiError {
     code: i32,
 }
 
+impl Debug for PapiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let err_msg_buf = unsafe { PAPI_strerror(self.code) };
+        let err_msg = unsafe { CStr::from_ptr(err_msg_buf) };
+        write!(
+            f,
+            "PapiError with error code {}, i.e \"{}\"",
+            self.code,
+            err_msg.to_str().unwrap_or_else(|_| "NULL")
+        )
+    }
+}
 pub(crate) fn check_error(code: i32) -> Result<(), PapiError> {
     if code == (PAPI_OK as i32) {
         Ok(())
@@ -51,8 +62,25 @@ extern "C" fn get_thread_id() -> c_ulong {
 
 pub fn initialize(multithread: bool) -> Result<(), PapiError> {
     unsafe {
-        let version = PAPI_library_init(PAPI_VER_CURRENT);
-        if version != PAPI_VER_CURRENT {
+        let cur_version = Command::new("papi_version")
+            .output()
+            .expect("papi_version not found")
+            .stdout;
+        let cur_version = String::from_utf8(cur_version).unwrap();
+        let mut digits = cur_version
+            .trim()
+            .split(' ')
+            .last()
+            .unwrap()
+            .split('.')
+            .map(|d| d.parse::<u32>().unwrap());
+        let maj = digits.next().unwrap();
+        let min = digits.next().unwrap();
+        let rev = digits.next().unwrap();
+        let inc = digits.next().unwrap();
+        let cur_version = (papi_version_number(maj, min, rev, inc) & 0xffff0000) as c_int;
+        let version = PAPI_library_init(cur_version);
+        if version != cur_version {
             return Err(PapiError { code: version });
         }
 
@@ -62,6 +90,13 @@ pub fn initialize(multithread: bool) -> Result<(), PapiError> {
     }
 
     Ok(())
+}
+
+/// ALL EventsSet should be dropped before calling this
+pub fn terminate() {
+    unsafe {
+        PAPI_shutdown();
+    }
 }
 
 pub fn is_initialized() -> bool {
@@ -79,37 +114,21 @@ pub enum Action {
 mod tests {
     use crate::counter::Counter;
     use crate::events_set::EventsSet;
+    use crate::initialize;
+    use crate::terminate;
+    use crate::PapiError;
 
     #[test]
-    fn test_fib() {
-        crate::initialize(true).unwrap();
-
-        let counters = vec![
-            Counter::from_name("ix86arch::INSTRUCTION_RETIRED").unwrap(),
-            Counter::from_name("ix86arch::MISPREDICTED_BRANCH_RETIRED").unwrap(),
-        ];
-
-        let mut event_set = EventsSet::new(&counters).unwrap();
-        let mut second_set = event_set.try_clone().unwrap();
-
-        for fv in 1..45 {
-            event_set.start().unwrap();
-            second_set.start().unwrap();
-            let x = fib(fv);
-            second_set.stop().unwrap();
-            let counters = event_set.stop().unwrap();
-            println!(
-                "Computed fib({}) = {} in {} instructions [mispredicted: {}].",
-                fv, x, counters[0], counters[1]
-            );
-        }
-    }
-
-    fn fib(n: isize) -> isize {
-        if n < 2 {
-            1
-        } else {
-            fib(n - 1) + fib(n - 2)
-        }
+    fn test_papi_error() {
+        // https://bitbucket.org/icl/papi/wiki/PAPI-Error-Handling.md
+        // source for expected error messages
+        initialize(true).unwrap();
+        let error = PapiError { code: -7 };
+        let msg = format!("{error:?}");
+        assert_eq!(
+            msg,
+            "PapiError with error code -7, i.e \"Event does not exist\""
+        );
+        terminate()
     }
 }
